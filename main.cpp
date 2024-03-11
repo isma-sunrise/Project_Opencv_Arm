@@ -7,6 +7,10 @@
 
 int main(int argc, char** argv )
 {
-    //test
+    // read image
+    cv::Mat  image_src = cv::imread( "oldcar.jpg" , cv::IMREAD_COLOR );
+
+    // show image
+    cv::imshow("image_src", image_src);
     return 0;
 }
