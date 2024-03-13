@@ -1,20 +1,36 @@
-cmake_minimum_required(VERSION 3.16)
+# cmake needs this line
+cmake_minimum_required(VERSION 3.1)
 
-project(DisplayImage VERSION 1.0.0 LANGUAGES C CXX)
+# Define project name
+project(sobel_simd_opencv_project)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(OpenCV_DIR "/home/ismail/Downloads/build/opencv4")
+# Find OpenCV, you may need to set OpenCV_DIR variable
+# to the absolute path to the directory containing OpenCVConfig.cmake file
+# via the command line or GUI
+find_package(OpenCV REQUIRED)
 
-find_package( OpenCV REQUIRED )
+# Enable SIMD instructions for Intel Intrinsics
+# https://software.intel.com/sites/landingpage/IntrinsicsGuide/
+if(NOT WIN32)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
+endif()
 
-# include_directories( ${OpenCV_INCLUDE_DIRS} )
-add_executable( DisplayImage main.cpp )
-target_link_libraries( DisplayImage ${OpenCV_LIBS} )
-
+# If the package has been found, several variables will
+# be set, you can find the full list with descriptions
+# in the OpenCVConfig.cmake file.
+# Print some message showing some of them
 message(STATUS "OpenCV library status:")
 message(STATUS "    config: ${OpenCV_DIR}")
 message(STATUS "    version: ${OpenCV_VERSION}")
 message(STATUS "    libraries: ${OpenCV_LIBS}")
 message(STATUS "    include path: ${OpenCV_INCLUDE_DIRS}")
+
+# Declare the executable target built from your sources
+add_executable(sobel_simd_opencv main.cpp)
+
+# Link your application with OpenCV libraries
+target_link_libraries(sobel_simd_opencv PRIVATE ${OpenCV_LIBS})
+
+# Copy input file for image processing to build folder
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/monarch.jpg
+    DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
