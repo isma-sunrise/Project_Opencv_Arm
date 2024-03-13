@@ -11,9 +11,9 @@ find_package(OpenCV REQUIRED)
 
 # Enable SIMD instructions for Intel Intrinsics
 # https://software.intel.com/sites/landingpage/IntrinsicsGuide/
-if(NOT WIN32)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
-endif()
+# if(NOT WIN32)
+#     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
+# endif()
 
 # If the package has been found, several variables will
 # be set, you can find the full list with descriptions
