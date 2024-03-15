@@ -211,23 +211,41 @@ void SobelNonSimd(Rect cropSize, Mat inputImage)
     resultImageNonSimd = outputImage.clone();
 }
 
+void func(int8_t *buf) {
+    int8x16_t vec = vld1q_s8(buf); // load 16x int8_t
+    int16x8_t short1 = vmovl_s8(vget_low_s8(vec)); // cast the first 8x int8_t to int16_t
+    int16x8_t short2 = vmovl_s8(vget_high_s8(vec)); // cast the last 8x int8_t to int16_t
+    short1 = vaddq_s16(short1, short1); // Do operation on int16
+    short2 = vaddq_s16(short2, short2);
+    vec = vcombine_s8(vmovn_s16(short1), vmovn_s16(short2)); // Cast back to int8_t and combine the two vectors
+    vst1q_s8(buf, vec); // Store
+}
+
 void print128_num(int16x8_t var)
 {
     uint16_t val[8];
     memcpy(val, &var, sizeof(val));
-    printf("Numerical: %X %X %X %X %X %X %X %X \n", 
+    printf("Numerical: %04X %04X %04X %04X %04X %04X %04X %04X \n", 
            val[0], val[1], val[2], val[3], val[4], val[5], 
            val[6], val[7]);
 }
 
-void print128_num(int16x8x2_t var)
+void print128_num(int8x16_t var)
 {
-    uint16_t val[8];
+    uint8_t val[16];
     memcpy(val, &var, sizeof(val));
-    printf("Numerical: %X %X %X %X %X %X %X %X \n %X %X %X %X %X %X %X %X \n", 
+    printf("Numerical: %04X %04X %04X %04X %04X %04X %04X %04X \n %04X %04X %04X %04X %04X %04X %04X %04X \n", 
            val[0], val[1], val[2], val[3], val[4], val[5], 
            val[6], val[7], val[8], val[9], val[10], val[11], val[12], val[13], 
            val[14], val[15]);
+}
+
+void print128_num(int16x4_t var)
+{
+    uint16_t val[4];
+    memcpy(val, &var, sizeof(val));
+    printf("Numerical: %04X %04X %04X %04X \n", 
+           val[0], val[1], val[2], val[3]);
 }
 
 void SobelSimd(Rect cropSize, Mat inputImage)
@@ -238,8 +256,10 @@ void SobelSimd(Rect cropSize, Mat inputImage)
     outputImage.create(inputImage.size(), inputImage.depth());
 
     int16x8_t p1, p2, p3, p4, p5, p6, p7, p8, p9;
-    int16x8_t gx, gy, temp, G;
+    int8x16_t A1, A2, A3, A4, A5, A6, A7, A8, A9;
 
+    int16x8_t gx, gy, temp, G;
+    int8x16_t test0;
     outputPointer = outputImage.ptr<uchar>();
     inputPointer = inputImage.ptr<uchar>();
 
@@ -270,24 +290,29 @@ void SobelSimd(Rect cropSize, Mat inputImage)
             Load 128-bits of integer data from memory into dst. mem_addr does not need to be aligned on any particular boundary.
             */
 
-            p1 = vld1q_s16((const int16_t*)(inputPointer + i * width + j));
-            p2 = vld1q_s16((const int16_t*)(inputPointer + i * width + j + 1));
-            p3 = vld1q_s16((const int16_t*)(inputPointer + i * width + j + 2));
+            A1 = vld1q_s8((const int8_t*)(inputPointer + i * width + j));
+            A2 = vld1q_s8((const int8_t*)(inputPointer + i * width + j + 1));
+            A3 = vld1q_s8((const int8_t*)(inputPointer + i * width + j + 2));
 
-            p4 = vld1q_s16((const int16_t*)(inputPointer + (i + 1) * width + j));
-            p5 = vld1q_s16((const int16_t*)(inputPointer + (i + 1) * width + j + 1));
-            p6 = vld1q_s16((const int16_t*)(inputPointer + (i + 1) * width + j + 2));
+            A4 = vld1q_s8((const int8_t*)(inputPointer + (i + 1) * width + j));
+            A5 = vld1q_s8((const int8_t*)(inputPointer + (i + 1) * width + j + 1));
+            A6 = vld1q_s8((const int8_t*)(inputPointer + (i + 1) * width + j + 2));
 
-            p7 = vld1q_s16((const int16_t*)(inputPointer + (i + 2) * width + j));
-            p8 = vld1q_s16((const int16_t*)(inputPointer + (i + 2) * width + j + 1));
-            p9 = vld1q_s16((const int16_t*)(inputPointer + (i + 2) * width + j + 2));
+            A7 = vld1q_s8((const int8_t*)(inputPointer + (i + 2) * width + j));
+            A8 = vld1q_s8((const int8_t*)(inputPointer + (i + 2) * width + j + 1));
+            A9 = vld1q_s8((const int8_t*)(inputPointer + (i + 2) * width + j + 2));
 
+            test0 = vcombine_s8(vcreate_s8(0),vcreate_s8(0)) ;
+            // test0 = vcreate_s8(0);
             if(i == (border - 1) && j == (border - 1)) {
+                std::cout << "step 0 : ";
+                print128_num(test0);
                 std::cout << "step 1 : ";
-                print128_num(p1);
+                print128_num(A1);
                 std::cout << "step 2 : ";
-                print128_num(vtrnq_s16(p1, p1));
+                print128_num(vzip1q_s8(A1,test0));
                 std::cout << "step 3 : ";
+                print128_num(vreinterpretq_s16_s8(vzip1q_s8(A1,test0)));
             }
 
             /*
