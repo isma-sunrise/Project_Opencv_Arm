@@ -240,6 +240,16 @@ void print128_num(int8x16_t var)
            val[14], val[15]);
 }
 
+void print128_num(uint8x16_t var)
+{
+    uint8_t val[16];
+    memcpy(val, &var, sizeof(val));
+    printf("Numerical: %04X %04X %04X %04X %04X %04X %04X %04X \n %04X %04X %04X %04X %04X %04X %04X %04X \n", 
+           val[0], val[1], val[2], val[3], val[4], val[5], 
+           val[6], val[7], val[8], val[9], val[10], val[11], val[12], val[13], 
+           val[14], val[15]);
+}
+
 void print128_num(int16x4_t var)
 {
     uint16_t val[4];
@@ -256,10 +266,11 @@ void SobelSimd(Rect cropSize, Mat inputImage)
     outputImage.create(inputImage.size(), inputImage.depth());
 
     int16x8_t p1, p2, p3, p4, p5, p6, p7, p8, p9;
-    int8x16_t A1, A2, A3, A4, A5, A6, A7, A8, A9;
+    uint8x16_t A1, A2, A3, A4, A5, A6, A7, A8, A9;
 
+    uint8x16_t result;
     int16x8_t gx, gy, temp, G;
-    int8x16_t test0;
+    uint8x16_t vec0;
     outputPointer = outputImage.ptr<uchar>();
     inputPointer = inputImage.ptr<uchar>();
 
@@ -290,29 +301,44 @@ void SobelSimd(Rect cropSize, Mat inputImage)
             Load 128-bits of integer data from memory into dst. mem_addr does not need to be aligned on any particular boundary.
             */
 
-            A1 = vld1q_s8((const int8_t*)(inputPointer + i * width + j));
-            A2 = vld1q_s8((const int8_t*)(inputPointer + i * width + j + 1));
-            A3 = vld1q_s8((const int8_t*)(inputPointer + i * width + j + 2));
+            A1 = vld1q_u8((const uint8_t*)(inputPointer + i * width + j));
+            A2 = vld1q_u8((const uint8_t*)(inputPointer + i * width + j + 1));
+            A3 = vld1q_u8((const uint8_t*)(inputPointer + i * width + j + 2));
 
-            A4 = vld1q_s8((const int8_t*)(inputPointer + (i + 1) * width + j));
-            A5 = vld1q_s8((const int8_t*)(inputPointer + (i + 1) * width + j + 1));
-            A6 = vld1q_s8((const int8_t*)(inputPointer + (i + 1) * width + j + 2));
+            A4 = vld1q_u8((const uint8_t*)(inputPointer + (i + 1) * width + j));
+            A5 = vld1q_u8((const uint8_t*)(inputPointer + (i + 1) * width + j + 1));
+            A6 = vld1q_u8((const uint8_t*)(inputPointer + (i + 1) * width + j + 2));
 
-            A7 = vld1q_s8((const int8_t*)(inputPointer + (i + 2) * width + j));
-            A8 = vld1q_s8((const int8_t*)(inputPointer + (i + 2) * width + j + 1));
-            A9 = vld1q_s8((const int8_t*)(inputPointer + (i + 2) * width + j + 2));
+            A7 = vld1q_u8((const uint8_t*)(inputPointer + (i + 2) * width + j));
+            A8 = vld1q_u8((const uint8_t*)(inputPointer + (i + 2) * width + j + 1));
+            A9 = vld1q_u8((const uint8_t*)(inputPointer + (i + 2) * width + j + 2));
 
-            test0 = vcombine_s8(vcreate_s8(0),vcreate_s8(0)) ;
-            // test0 = vcreate_s8(0);
+            vec0 = vcombine_u8(vcreate_u8(0),vcreate_u8(0)) ;
+
+            p1 = vreinterpretq_s16_u8(vzip1q_u8(A1,vec0));
+            p2 = vreinterpretq_s16_u8(vzip1q_u8(A2,vec0));
+            p3 = vreinterpretq_s16_u8(vzip1q_u8(A3,vec0));
+            p4 = vreinterpretq_s16_u8(vzip1q_u8(A4,vec0));
+            p5 = vreinterpretq_s16_u8(vzip1q_u8(A5,vec0));
+            p6 = vreinterpretq_s16_u8(vzip1q_u8(A6,vec0));
+            p7 = vreinterpretq_s16_u8(vzip1q_u8(A7,vec0));
+            p8 = vreinterpretq_s16_u8(vzip1q_u8(A8,vec0));
+            p9 = vreinterpretq_s16_u8(vzip1q_u8(A9,vec0));
+
+
             if(i == (border - 1) && j == (border - 1)) {
                 std::cout << "step 0 : ";
-                print128_num(test0);
+                print128_num(vec0);
                 std::cout << "step 1 : ";
                 print128_num(A1);
                 std::cout << "step 2 : ";
-                print128_num(vzip1q_s8(A1,test0));
+                print128_num(vzip1q_u8(A1,vec0));
                 std::cout << "step 3 : ";
-                print128_num(vreinterpretq_s16_s8(vzip1q_s8(A1,test0)));
+                print128_num(p1);
+                std::cout << "step 4 : ";
+                print128_num(vreinterpretq_s16_u8(A1));
+                // std::cout << "step 3 : ";
+                // print128_num(p1);
             }
 
             /*
@@ -325,7 +351,6 @@ void SobelSimd(Rect cropSize, Mat inputImage)
 
             // convert image 8-bit unsigned integer data to 16-bit signed integers to use in arithmetic operations
 
-                        // vshr_n_s16
             // p1 = _mm_srli_epi16(_mm_unpacklo_epi8(p1, p1), 8);
             // p2 = _mm_srli_epi16(_mm_unpacklo_epi8(p2, p2), 8);
             // p3 = _mm_srli_epi16(_mm_unpacklo_epi8(p3, p3), 8);
@@ -345,60 +370,64 @@ void SobelSimd(Rect cropSize, Mat inputImage)
             */
 
             // Calculating Gx = (p3 + 2 * p6 + p9) - (p1 + 2 * p4 + p7)
-            // gx = _mm_add_epi16(p6, p6);   // 2*p6
-            // gx = _mm_add_epi16(gx, p3);   // p3 + 2*p6
-            // gx = _mm_add_epi16(gx, p9);   // p3 + 2*p6 + p9
-            // gx = _mm_sub_epi16(gx, p1);   // p3 + 2*p6 + p9 - p1
-            // temp = _mm_add_epi16(p4, p4); // 2*p4
-            // gx = _mm_sub_epi16(gx, temp); // p3 + 2*p6 + p9 - (p1 + 2*p4)
-            // gx = _mm_sub_epi16(gx, p7);   // p3 + 2*p6 + p9 - (p1 + 2*p4 + p7)
+            gx = vaddq_s16(p6, p6);   // 2*p6
+            gx = vaddq_s16(gx, p3);   // p3 + 2*p6
+            gx = vaddq_s16(gx, p9);   // p3 + 2*p6 + p9
+            gx = vsubq_s16(gx, p1);   // p3 + 2*p6 + p9 - p1
+            temp = vaddq_s16(p4, p4); // 2*p4
+            gx = vsubq_s16(gx, temp); // p3 + 2*p6 + p9 - (p1 + 2*p4)
+            gx = vsubq_s16(gx, p7);   // p3 + 2*p6 + p9 - (p1 + 2*p4 + p7)
 
             // Calculating Gy = (p1 + 2 * p2 + p3) - (p7 + 2 * p8 + p9)
-            // gy = _mm_add_epi16(p2, p2);   // 2*p2
-            // gy = _mm_add_epi16(gy, p1);   // p1 + 2*p2
-            // gy = _mm_add_epi16(gy, p3);   // p1 + 2*p2 + p3
-            // gy = _mm_sub_epi16(gy, p7);   // p1 + 2*p2 + p3 - p7
-            // temp = _mm_add_epi16(p8, p8); // 2*p8
-            // gy = _mm_sub_epi16(gy, temp); // p1 + 2*p2 + p3 - (p7 + 2*p8)
-            // gy = _mm_sub_epi16(gy, p9);   // p1 + 2*p2 + p3 - (p7 + 2*p8 + p9)
+            gy = vaddq_s16(p2, p2);   // 2*p2
+            gy = vaddq_s16(gy, p1);   // p1 + 2*p2
+            gy = vaddq_s16(gy, p3);   // p1 + 2*p2 + p3
+            gy = vsubq_s16(gy, p7);   // p1 + 2*p2 + p3 - p7
+            temp = vaddq_s16(p8, p8); // 2*p8
+            gy = vsubq_s16(gy, temp); // p1 + 2*p2 + p3 - (p7 + 2*p8)
+            gy = vsubq_s16(gy, p9);   // p1 + 2*p2 + p3 - (p7 + 2*p8 + p9)
 
             /*
             __m128i _mm_abs_epi16 (__m128i a)
             Compute the absolute value of packed 16-bit integers in a, and store the unsigned Gs in dst.
             */
 
-            // gx = _mm_abs_epi16(gx); // |Gx|
-            // gy = _mm_abs_epi16(gy); // |Gy|
+            gx = vabsq_s16(gx); // |Gx|
+            gy = vabsq_s16(gy); // |Gy|
 
             // G = |Gx| + |Gy|
-            // G = _mm_add_epi16(gx, gy);
+            G = vaddq_s16(gx, gy);
 
             /*
             __m128i _mm_packus_epi16 (__m128i a, __m128i b)
             Convert packed 16-bit integers from a and b to packed 8-bit integers using unsigned saturation, and store the results in dst.
             */
-            // G = _mm_packus_epi16(G, G);
+            result = vreinterpretq_u8_s16(G);
+            if(i == (border - 1) && j == (border - 1)) {
+                std::cout << "step 1 : ";
+                // print128_num(result);
+            }
 
             /*
             void _mm_storeu_si128 (__m128i* mem_addr, __m128i a)
             Store 128-bits of integer data from a into memory. mem_addr does not need to be aligned on any particular boundary.
             */
-            // _mm_storeu_si128((__m128i *)(outputPointer + (i + 1) * width + j + 1), G);
+            vst1q_u8((uint8_t*)(outputPointer + (i + 1) * width + j + 1), result);
         }
     }
 
     // stop timer
-    // t2 = getCurrentTimeInMicroseconds();
+    t2 = getCurrentTimeInMicroseconds();
     // // calculate and print elapsed time in microseconds
-    // elapsedTime = calculateElapsedTime(t1, t2);
-    // cout << "Execution time for SIMD Sobel edge detection:" << endl;
-    // cout << elapsedTime << " us" << endl;
+    elapsedTime = calculateElapsedTime(t1, t2);
+    cout << "Execution time for SIMD Sobel edge detection:" << endl;
+    cout << elapsedTime << " us" << endl;
 
     // // crop image and remove added borders
-    // outputImage = outputImage(cropSize);
+    outputImage = outputImage(cropSize);
 
     // // Copy outputImage to resultImageSimd
-    // resultImageSimd = outputImage.clone();
+    resultImageSimd = outputImage.clone();
 }
 
 void SobelOpenCV(Rect cropSize, Mat inputImage)
