@@ -7,13 +7,16 @@ project(sobel_simd_opencv_project)
 # Find OpenCV, you may need to set OpenCV_DIR variable
 # to the absolute path to the directory containing OpenCVConfig.cmake file
 # via the command line or GUI
-find_package(OpenCV REQUIRED)
+set(OpenCV_DIR "~/Downloads/build")
+find_package(OpenCV REQUIRED PATHS "~/Downloads/build")
 
 # Enable SIMD instructions for Intel Intrinsics
 # https://software.intel.com/sites/landingpage/IntrinsicsGuide/
 # if(NOT WIN32)
-#     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
+#     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCV_DISABLE_OPTIMIZATION=ON -DCV_ENABLE_INTRINSICS=OFF -DENABLE_NEON=OFF")
 # endif()
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCV_DISABLE_OPTIMIZATION=ON -DCV_ENABLE_INTRINSICS=OFF -DENABLE_NEON=OFF")
 
 # If the package has been found, several variables will
 # be set, you can find the full list with descriptions
